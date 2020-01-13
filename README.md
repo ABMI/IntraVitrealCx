@@ -1,25 +1,24 @@
-Complication of intravitreous injection 
-=================
+[Complication of intravitreous injection]
+=============
+
+<img src="https://img.shields.io/badge/Study%20Status-Started-blueviolet.svg" alt="Study Status: Started">
+
+- Analytics use case(s): `Characterization`
+- Study type: `Clinical Application` 
+- Tags: `OHDSI-Korea`,`FEEDER-NET`
+- Study lead: 박상준, 문용석
+- Study lead forums tag: 
+- Study start date: January 13, 2020
+- Study end date: 
+- Protocol: 
+- Publications: 
+- Results explorer: 
+
+[Description]
 
 A study to describe the baseline characteristics of patients used intravitreous injection and their complications
-
-| Element | Description |
-| ------- | ----------- |
-| [Study title]      | Complication of intravitreous injection      
-| Study status badge | <img src="https://img.shields.io/badge/Study%20Status-Started-blueviolet.svg" alt="Study Status: Started"> |
-| Analytics use case | `Characterization` |
-| Study type | `Clinical Application` |
-| Tags | `OHDSI-Korea`,`FEEDER-NET` |
-| Study lead | 박상준, 문용석|
-| Study lead forums tag |  |
-| Study start date | January 13, 2020|
-| Study end date | | 
-| Protocol | | 
-| Publications | | 
-| Results explorer |  |
 
 License
 =======
 
 The Complication of intravitreous injection study package is licensed under Apache License 2.0
-
