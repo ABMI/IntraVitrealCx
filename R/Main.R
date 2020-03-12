@@ -109,8 +109,18 @@ execute <- function(connectionDetails,
         outcomeCohortId = 950
 
         ##Create Covariate Table
-        covariateSettings <- FeatureExtraction::createCovariateSettings(useDemographicsGender = TRUE,
-                                                                        useDemographicsAge = TRUE)
+        minCovariateSettings <- FeatureExtraction::createCovariateSettings(useDemographicsGender = TRUE,
+                                                                           useDemographicsAge = TRUE)
+        covariateSettings <- FeatureExtraction::createDefaultCovariateSettings()
+        covariateData <- FeatureExtraction::getDbCovariateData(connectionDetails = connectionDetails,
+                                                               cdmDatabaseSchema = cdmDatabaseSchema,
+                                                               cohortDatabaseSchema = cohortDatabaseSchema,
+                                                               cohortTable = cohortTable,
+                                                               cohortId = targetCohortId,
+                                                               rowIdField = "subject_id",
+                                                               covariateSettings = covariateSettings)
+        # covariateDataAgg <- FeatureExtraction::aggregateCovariates(covariateData)
+        # baseChar <- FeatureExtraction::createTable1(covariateDataAgg)
 
         ##Incidence
         plpData <- PatientLevelPrediction::getPlpData(connectionDetails = connectionDetails,
@@ -118,7 +128,7 @@ execute <- function(connectionDetails,
                                                       cohortDatabaseSchema = cohortDatabaseSchema,
                                                       cohortTable = cohortTable,
                                                       cohortId = targetCohortId,
-                                                      covariateSettings = covariateSettings,
+                                                      covariateSettings = minCovariateSettings,
                                                       outcomeDatabaseSchema = cohortDatabaseSchema,
                                                       outcomeTable = cohortTable,
                                                       outcomeIds = outcomeCohortId,
@@ -127,23 +137,72 @@ execute <- function(connectionDetails,
         population <- PatientLevelPrediction::createStudyPopulation(plpData = plpData,
                                                                     outcomeId = outcomeCohortId,
                                                                     washoutPeriod = 0,
-                                                                    firstExposureOnly = FALSE,
+                                                                    firstExposureOnly = TRUE,
                                                                     removeSubjectsWithPriorOutcome =F,
                                                                     priorOutcomeLookback = 0,
                                                                     riskWindowStart = 1,
                                                                     riskWindowEnd = 42,
                                                                     addExposureDaysToStart = FALSE,
-                                                                    addExposureDaysToEnd = FALSE,
+                                                                    addExposureDaysToEnd = TRUE,
                                                                     minTimeAtRisk = 1,
                                                                     requireTimeAtRisk = FALSE,
                                                                     includeAllOutcomes = TRUE,
                                                                     verbosity = "DEBUG")
+
+        outcomeInd <- population$outcomeCount==1
+
+
+        covariates = covariateData$covariates
+
+        idx <- ffbase::ffmatch(x = covariates$rowId, table = ff::as.ff(population$subjectId[outcomeInd]))
+        idx <- ffbase::ffwhich(idx, !is.na(idx))
+        outcomeCovariates <- covariates[idx, ]
+
+        idx <- ffbase::ffmatch(x = covariates$rowId, table = ff::as.ff(population$subjectId[!outcomeInd]))
+        idx <- ffbase::ffwhich(idx, !is.na(idx))
+        nonOutcomeCovariates <- covariates[idx, ]
+
+        covariateData$covariates = outcomeCovariates
+
+        covariateData2 = covariateData
+        covariateData2$covariates = nonOutcomeCovariates
+
+        covariateData$metaData$populationSize = sum(outcomeInd)
+        covariateData2$metaData$populationSize = sum(!outcomeInd)
+
+        # covariateData2 = list(covariates = plpData$covariates,
+        #                      covariateRef = plpData$covariateRef,
+        #                      timeRef = plpData$timeRef,
+        #                      analysisRef = plpData$analysisRef,
+        #                      metaData = plpData$metaData)
+        # class(covariateData2) = "covariateData"
+        # covariateDataAgg <- FeatureExtraction::aggregateCovariates(covariateData)
+
+        # outcomeCov <- MapCovariates(plpData = plpData,
+        #                             population = population[outcomeInd,])
+        #
+        # noOutcomeCov <- MapCovariates(plpData = plpData,
+        #                               population = population[-outcomeInd,])
+
+        outcomeCovariateDataAgg <- FeatureExtraction::aggregateCovariates(covariateData)
+        noOutcomeCovariateDataAgg <- FeatureExtraction::aggregateCovariates(covariateData2)
+
+        baseCharOutcome <- FeatureExtraction::createTable1(outcomeCovariateDataAgg)
+        baseCharNot <- FeatureExtraction::createTable1(noOutcomeCovariateDataAgg)
+
         exportFolder <- file.path(outputFolder, "export")
         if (!file.exists(exportFolder)) {
             dir.create(exportFolder, recursive = TRUE)
         }
 
+        #remove the start date from the population
+        population$cohortStartDate <- paste0(substr(population$cohortStartDate,1,4),"-01-01")
+
         write.csv(table(population$outcomeCount),file.path(exportFolder, "outcomeCount.csv"))
+        write.csv(baseCharOutcome, file.path(exportFolder, "baselineChar.csv"))
+        write.csv(baseCharNot, file.path(exportFolder, "baseCharNot.csv"))
+        write.csv(population[,-2], file.path(exportFolder, "population.csv"))
+
     }
 
     if (packageResults) {
