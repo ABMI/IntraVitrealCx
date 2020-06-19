@@ -1,3 +1,17 @@
 atlasId,atlasName,cohortId,name
 919,Intravitreal bevacizumab,919,Bevacizumab
+920,Intravitreal bevacizumab MD,920,Bevacizumab_md
+921,Intravitreal bevacizumab Diabetes,921,Bevacizumab_dm
+922,Intravitreal bevacizumab RVO,922,Bevacizumab_rvo
+923,Intravitreal bevacizumab Others,923,Bevacizumab_others
+924,Intravitreal Ranibizumab,924,Ranibizumab
+925,Intravitreal Ranibizumab MD,925,Ranibizumab_md
+926,Intravitreal Ranibizumab Diabetes,926,Ranibizumab_dm
+927,Intravitreal Ranibizumab RVO,927,Ranibizumab_rvo
+928,Intravitreal Ranibizumab Others,928,Ranibizumab_others
+929,Intravitreal Aflibercept,929,Aflibercept
+930,Intravitreal Aflibercept MD,930,Aflibercept_md
+931,Intravitreal Aflibercept Diabetes,931,Aflibercept_dm
+932,Intravitreal Aflibercept RVO,932,Aflibercept_rvo
+933,Intravitreal Aflibercept Others,933,Aflibercept_others
 950,Outomce Endophthalmitis,950,Endophthalmitis

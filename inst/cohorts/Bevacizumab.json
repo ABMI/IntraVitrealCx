@@ -90,7 +90,7 @@
     "Type": "First"
   },
   "ExpressionLimit": {
-    "Type": "All"
+    "Type": "First"
   },
   "InclusionRules": [
     {
@@ -109,6 +109,8 @@
                     "CONCEPT_ID": 4302785,
                     "CONCEPT_NAME": "Intravitreal",
                     "DOMAIN_ID": "Route",
+                    "INVALID_REASON_CAPTION": "Unknown",
+                    "STANDARD_CONCEPT_CAPTION": "Unknown",
                     "VOCABULARY_ID": "SNOMED"
                   }
                 ]
@@ -170,8 +172,9 @@
     }
   ],
   "EndStrategy": {
-    "DateOffset": {
-      "DateField": "StartDate",
+    "CustomEra": {
+      "DrugCodesetId": 1,
+      "GapDays": 180,
       "Offset": 0
     }
   },
@@ -180,5 +183,6 @@
     "CollapseType": "ERA",
     "EraPad": 0
   },
-  "CensorWindow": {}
+  "CensorWindow": {},
+  "cdmVersionRange": ">=5.0.0"
 }

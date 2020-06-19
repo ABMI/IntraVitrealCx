@@ -105,104 +105,129 @@ execute <- function(connectionDetails,
                       outputFolder = outputFolder)
     }
     if (createPlpData){
-        targetCohortId = 919
+
+        targetCohortIds = 919:933
         outcomeCohortId = 950
+        for(targetCohortId in targetCohortIds){
+            ##Create Covariate Table
+            ParallelLogger::logInfo(sprintf("Extract information for cohort %d",targetCohortId))
 
-        ##Create Covariate Table
-        minCovariateSettings <- FeatureExtraction::createCovariateSettings(useDemographicsGender = TRUE,
-                                                                           useDemographicsAge = TRUE)
-        covariateSettings <- FeatureExtraction::createDefaultCovariateSettings()
-        covariateData <- FeatureExtraction::getDbCovariateData(connectionDetails = connectionDetails,
-                                                               cdmDatabaseSchema = cdmDatabaseSchema,
-                                                               cohortDatabaseSchema = cohortDatabaseSchema,
-                                                               cohortTable = cohortTable,
-                                                               cohortId = targetCohortId,
-                                                               rowIdField = "subject_id",
-                                                               covariateSettings = covariateSettings)
-        # covariateDataAgg <- FeatureExtraction::aggregateCovariates(covariateData)
-        # baseChar <- FeatureExtraction::createTable1(covariateDataAgg)
+            exportFolder <- file.path(outputFolder, "export")
+            if (!file.exists(exportFolder)) {
+                dir.create(exportFolder, recursive = TRUE)
+            }
 
-        ##Incidence
-        plpData <- PatientLevelPrediction::getPlpData(connectionDetails = connectionDetails,
-                                                      cdmDatabaseSchema = cdmDatabaseSchema,
-                                                      cohortDatabaseSchema = cohortDatabaseSchema,
-                                                      cohortTable = cohortTable,
-                                                      cohortId = targetCohortId,
-                                                      covariateSettings = minCovariateSettings,
-                                                      outcomeDatabaseSchema = cohortDatabaseSchema,
-                                                      outcomeTable = cohortTable,
-                                                      outcomeIds = outcomeCohortId,
-                                                      sampleSize = sampleSize)
+            minCovariateSettings <- FeatureExtraction::createCovariateSettings(useDemographicsGender = TRUE,
+                                                                               useDemographicsAge = TRUE)
+            covariateSettings <- FeatureExtraction::createDefaultCovariateSettings()
+            covariateData <- FeatureExtraction::getDbCovariateData(connectionDetails = connectionDetails,
+                                                                   cdmDatabaseSchema = cdmDatabaseSchema,
+                                                                   cohortDatabaseSchema = cohortDatabaseSchema,
+                                                                   cohortTable = cohortTable,
+                                                                   cohortId = targetCohortId,
+                                                                   rowIdField = "subject_id",
+                                                                   covariateSettings = covariateSettings)
+            try({
+                covariateData <- FeatureExtraction::aggregateCovariates(covariateData)
+                overallBaseChar <- createTable1(covariateData,
+                                                specifications = FeatureExtraction::getDefaultTable1Specifications(),
+                                                output = "one column"
+                )
 
-        population <- PatientLevelPrediction::createStudyPopulation(plpData = plpData,
-                                                                    outcomeId = outcomeCohortId,
-                                                                    washoutPeriod = 0,
-                                                                    firstExposureOnly = TRUE,
-                                                                    removeSubjectsWithPriorOutcome =F,
-                                                                    priorOutcomeLookback = 0,
-                                                                    riskWindowStart = 1,
-                                                                    riskWindowEnd = 42,
-                                                                    addExposureDaysToStart = FALSE,
-                                                                    addExposureDaysToEnd = TRUE,
-                                                                    minTimeAtRisk = 1,
-                                                                    requireTimeAtRisk = FALSE,
-                                                                    includeAllOutcomes = TRUE,
-                                                                    verbosity = "DEBUG")
-
-        outcomeInd <- population$outcomeCount==1
+                write.csv(overallBaseChar, file.path(exportFolder, sprintf("OverallBaseChar_t%s.csv",targetCohortId)))
+            })
 
 
-        covariates = covariateData$covariates
+            try({
+                ##Incidence
+                plpData <- PatientLevelPrediction::getPlpData(connectionDetails = connectionDetails,
+                                                              cdmDatabaseSchema = cdmDatabaseSchema,
+                                                              cohortDatabaseSchema = cohortDatabaseSchema,
+                                                              cohortTable = cohortTable,
+                                                              cohortId = targetCohortId,
+                                                              covariateSettings = minCovariateSettings,
+                                                              outcomeDatabaseSchema = cohortDatabaseSchema,
+                                                              outcomeTable = cohortTable,
+                                                              outcomeIds = outcomeCohortId,
+                                                              sampleSize = sampleSize)
 
-        idx <- ffbase::ffmatch(x = covariates$rowId, table = ff::as.ff(population$subjectId[outcomeInd]))
-        idx <- ffbase::ffwhich(idx, !is.na(idx))
-        outcomeCovariates <- covariates[idx, ]
+                population <- PatientLevelPrediction::createStudyPopulation(plpData = plpData,
+                                                                            outcomeId = outcomeCohortId,
+                                                                            washoutPeriod = 0,
+                                                                            firstExposureOnly = TRUE,
+                                                                            removeSubjectsWithPriorOutcome =F,
+                                                                            priorOutcomeLookback = 0,
+                                                                            riskWindowStart = 1,
+                                                                            riskWindowEnd = 42,
+                                                                            addExposureDaysToStart = FALSE,
+                                                                            addExposureDaysToEnd = TRUE,
+                                                                            minTimeAtRisk = 1,
+                                                                            requireTimeAtRisk = FALSE,
+                                                                            includeAllOutcomes = TRUE,
+                                                                            verbosity = "DEBUG")
 
-        idx <- ffbase::ffmatch(x = covariates$rowId, table = ff::as.ff(population$subjectId[!outcomeInd]))
-        idx <- ffbase::ffwhich(idx, !is.na(idx))
-        nonOutcomeCovariates <- covariates[idx, ]
+                outcomeInd <- population$outcomeCount==1
 
-        covariateData$covariates = outcomeCovariates
 
-        covariateData2 = covariateData
-        covariateData2$covariates = nonOutcomeCovariates
+                covariates = covariateData$covariates
 
-        covariateData$metaData$populationSize = sum(outcomeInd)
-        covariateData2$metaData$populationSize = sum(!outcomeInd)
+                idx <- ffbase::ffmatch(x = covariates$rowId, table = ff::as.ff(population$subjectId[outcomeInd]))
+                idx <- ffbase::ffwhich(idx, !is.na(idx))
+                outcomeCovariates <- covariates[idx, ]
 
-        # covariateData2 = list(covariates = plpData$covariates,
-        #                      covariateRef = plpData$covariateRef,
-        #                      timeRef = plpData$timeRef,
-        #                      analysisRef = plpData$analysisRef,
-        #                      metaData = plpData$metaData)
-        # class(covariateData2) = "covariateData"
-        # covariateDataAgg <- FeatureExtraction::aggregateCovariates(covariateData)
+                idx <- ffbase::ffmatch(x = covariates$rowId, table = ff::as.ff(population$subjectId[!outcomeInd]))
+                idx <- ffbase::ffwhich(idx, !is.na(idx))
+                nonOutcomeCovariates <- covariates[idx, ]
 
-        # outcomeCov <- MapCovariates(plpData = plpData,
-        #                             population = population[outcomeInd,])
-        #
-        # noOutcomeCov <- MapCovariates(plpData = plpData,
-        #                               population = population[-outcomeInd,])
+                covariateData$covariates = outcomeCovariates
 
-        outcomeCovariateDataAgg <- FeatureExtraction::aggregateCovariates(covariateData)
-        noOutcomeCovariateDataAgg <- FeatureExtraction::aggregateCovariates(covariateData2)
+                covariateData2 = covariateData
+                covariateData2$covariates = nonOutcomeCovariates
 
-        baseCharOutcome <- FeatureExtraction::createTable1(outcomeCovariateDataAgg)
-        baseCharNot <- FeatureExtraction::createTable1(noOutcomeCovariateDataAgg)
+                covariateData$metaData$populationSize = sum(outcomeInd)
+                covariateData2$metaData$populationSize = sum(!outcomeInd)
 
-        exportFolder <- file.path(outputFolder, "export")
-        if (!file.exists(exportFolder)) {
-            dir.create(exportFolder, recursive = TRUE)
+                # covariateData2 = list(covariates = plpData$covariates,
+                #                      covariateRef = plpData$covariateRef,
+                #                      timeRef = plpData$timeRef,
+                #                      analysisRef = plpData$analysisRef,
+                #                      metaData = plpData$metaData)
+                # class(covariateData2) = "covariateData"
+                # covariateDataAgg <- FeatureExtraction::aggregateCovariates(covariateData)
+
+                # outcomeCov <- MapCovariates(plpData = plpData,
+                #                             population = population[outcomeInd,])
+                #
+                # noOutcomeCov <- MapCovariates(plpData = plpData,
+                #                               population = population[-outcomeInd,])
+
+                outcomeCovariateDataAgg <- FeatureExtraction::aggregateCovariates(covariateData)
+                noOutcomeCovariateDataAgg <- FeatureExtraction::aggregateCovariates(covariateData2)
+
+                try({
+                    baseCharOutcome <- createTable1(outcomeCovariateDataAgg,
+                                                    specifications = FeatureExtraction::getDefaultTable1Specifications(),
+                                                    output = "one column"
+                                                    )
+                    baseCharNot <- createTable1(noOutcomeCovariateDataAgg,
+                                                specifications = FeatureExtraction::getDefaultTable1Specifications(),
+                                                output = "one column")
+                })
+
+
+                #remove the start date from the population
+                population$cohortStartDate <- paste0(substr(population$cohortStartDate,1,4),"-01-01")
+
+                write.csv(table(population$outcomeCount),file.path(exportFolder, sprintf("outcomeCount_t%s.csv",targetCohortId)))
+                write.csv(population[,-2], file.path(exportFolder, sprintf("population_t%s.csv",targetCohortId)))
+                try({
+                    write.csv(baseCharOutcome, file.path(exportFolder, sprintf("baselineChar_t%s.csv",targetCohortId)))
+                    write.csv(baseCharNot, file.path(exportFolder, sprintf("baseCharNot_t%s.csv",targetCohortId)))
+                })
+            })
+
+
         }
-
-        #remove the start date from the population
-        population$cohortStartDate <- paste0(substr(population$cohortStartDate,1,4),"-01-01")
-
-        write.csv(table(population$outcomeCount),file.path(exportFolder, "outcomeCount.csv"))
-        write.csv(baseCharOutcome, file.path(exportFolder, "baselineChar.csv"))
-        write.csv(baseCharNot, file.path(exportFolder, "baseCharNot.csv"))
-        write.csv(population[,-2], file.path(exportFolder, "population.csv"))
-
     }
 
     if (packageResults) {
