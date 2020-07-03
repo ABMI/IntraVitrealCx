@@ -128,8 +128,8 @@ execute <- function(connectionDetails,
                                                                    rowIdField = "subject_id",
                                                                    covariateSettings = covariateSettings)
             try({
-                covariateData <- FeatureExtraction::aggregateCovariates(covariateData)
-                overallBaseChar <- createTable1(covariateData,
+                aggCovariateData <- FeatureExtraction::aggregateCovariates(covariateData)
+                overallBaseChar <- createTable1(aggCovariateData,
                                                 specifications = FeatureExtraction::getDefaultTable1Specifications(),
                                                 output = "one column"
                 )
